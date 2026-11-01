@@ -1,0 +1,136 @@
+================================================================================
+          GUIDE DE CABLAGE COMPLET - ESP32-S3 (BREAD-COMPACT-WIFI)
+               Projet : Desktop AI Buddy / Robot Xiaozhi
+================================================================================
+
+--------------------------------------------------------------------------------
+1. TABLEAU RECAPITULATIF DES GPIO
+--------------------------------------------------------------------------------
+
+GPIO ESP32-S3   |  Fonction / Module           |  Rôle
+----------------+------------------------------+--------------------------------
+GPIO 0          |  Bouton BOOT                 |  Bouton embarqué sur la carte
+GPIO 4          |  Micro INMP441 (WS)          |  Word Select (L/R Clock)
+GPIO 5          |  Micro INMP441 (SCK)         |  Serial Clock
+GPIO 6          |  Micro INMP441 (SD)          |  Sortie Données Micro -> ESP32
+GPIO 7          |  Ampli MAX98357A (DIN)       |  Entrée Données Ampli <- ESP32
+GPIO 10         |  ADC Batterie (Diviseur)     |  Mesure tension batterie (0-3.3V)
+GPIO 11         |  Moteur A - IN1 (Drive)      |  Propulsion Avance / Recul
+GPIO 12         |  Moteur A - IN2 (Drive)      |  Propulsion Avance / Recul
+GPIO 13         |  Moteur B - IN1 (Steer)      |  Direction Gauche / Droite
+GPIO 14         |  Moteur B - IN2 (Steer)      |  Direction Gauche / Droite
+GPIO 15         |  Ampli MAX98357A (BCLK)      |  Bit Clock Audio
+GPIO 16         |  Ampli MAX98357A (LRC)       |  Left/Right Clock Audio
+GPIO 18         |  Lampe / Relais MCP          |  Contrôle lampe ou accessoire
+GPIO 39         |  Bouton Volume BAS           |  Bouton poussoir vers GND
+GPIO 40         |  Bouton Volume HAUT          |  Bouton poussoir vers GND
+GPIO 41         |  Ecran OLED (SDA)            |  Données I2C
+GPIO 42         |  Ecran OLED (SCL)            |  Horloge I2C
+GPIO 47         |  Bouton TOUCH / Action       |  Bouton tactile ou poussoir
+GPIO 48         |  LED RGB intégrée (WS2812)   |  Indicateur d'état système
+
+--------------------------------------------------------------------------------
+2. CABLAGE DETAILLE PAR COMPOSANT
+--------------------------------------------------------------------------------
+
+[A] MICROPHONE I2S — INMP441 (Mode Simplex)
+--------------------------------------------
+Broche Micro    |  Connexion ESP32-S3  |  Notes
+----------------+----------------------+----------------------------------------
+WS              |  GPIO 4              |  Word Select
+SCK             |  GPIO 5              |  Clock
+SD              |  GPIO 6              |  Serial Data
+VDD             |  3.3V                |  Ne PAS brancher sur 5V !
+GND             |  GND                 |  Masse commune
+L/R             |  GND                 |  Fixe le canal gauche (Left)
+
+
+[B] AMPLIFICATEUR AUDIO I2S — MAX98357A
+----------------------------------------
+Broche Ampli    |  Connexion ESP32-S3  |  Notes
+----------------+----------------------+----------------------------------------
+DIN             |  GPIO 7              |  Serial Data
+BCLK            |  GPIO 15             |  Bit Clock
+LRC             |  GPIO 16             |  Left/Right Clock
+VIN / VDD       |  5V (ou 3.3V)        |  5V recommandé pour volume puissant
+GND             |  GND                 |  Masse commune
+SD_MODE         |  Non connecté        |  Actif par défaut (ou résistance 1M)
+GAIN            |  Non connecté ou GND |  Gain par défaut (+9dB)
++ / - Haut-parleur branché directement sur les borniers de sortie du MAX98357A
+
+
+[C] ECRAN OLED I2C (SSD1306 ou SH1106 — 128x64 / 128x32)
+---------------------------------------------------------
+Broche Ecran    |  Connexion ESP32-S3  |  Notes
+----------------+----------------------+----------------------------------------
+SDA             |  GPIO 41             |  Ligne de données I2C
+SCL             |  GPIO 42             |  Ligne d'horloge I2C
+VCC             |  3.3V                |  Alimentation écran
+GND             |  GND                 |  Masse commune
+
+
+[D] DRIVER MOTEURS (L9110S / HG7881 / L298N)
+---------------------------------------------
+Broche Driver   |  Connexion ESP32-S3  |  Notes
+----------------+----------------------+----------------------------------------
+MOTOR-A IN1     |  GPIO 11             |  Commande Moteur Propulsion
+MOTOR-A IN2     |  GPIO 12             |  Commande Moteur Propulsion
+MOTOR-B IN1     |  GPIO 13             |  Commande Moteur Direction
+MOTOR-B IN2     |  GPIO 14             |  Commande Moteur Direction
+VCC / VIN       |  BATTERIE (5V à 9V)  |  Alimentation séparée des moteurs
+GND Driver      |  GND ESP32 + BATTERIE|  Masse commune OBLIGATOIRE !
+
+Fonctionnement :
+- Avancer  : IN1 = HIGH, IN2 = LOW
+- Reculer  : IN1 = LOW,  IN2 = HIGH
+- Droite   : IN3 = HIGH, IN4 = LOW
+- Gauche   : IN3 = LOW,  IN4 = HIGH
+- Arrêt    : Tous à LOW
+
+
+[E] SURVEILLANCE BATTERIE (Pont Diviseur ADC)
+----------------------------------------------
+Schéma de câblage :
+Batterie (+) -----> [ Résistance 100 kΩ ] -----> GPIO 10 -----> [ Résistance 47 kΩ ] -----> GND
+
+Explication :
+- Protège l'ESP32 en abaissant la tension de la batterie (ex: 8.4V max -> ~2.69V).
+- Ratio du pont : 47k / (100k + 47k) = 0.3197
+- Entrée mesurée sur GPIO 10 (ADC1 Canal 9).
+
+
+[F] LAMPE / RELAIS / ACCESSOIRE (MCP)
+--------------------------------------
+Broche          |  Connexion ESP32-S3  |  Notes
+----------------+----------------------+----------------------------------------
+Signal Relais/LED GPIO 18              |  Contrôle tout-ou-rien (HIGH=ON)
+VCC             |  5V ou 3.3V          |  Selon le relais / transistor
+GND             |  GND                 |  Masse commune
+
+
+[G] BOUTONS & LEDS
+-------------------
+Composant       |  Connexion ESP32-S3  |  Notes
+----------------+----------------------+----------------------------------------
+Bouton BOOT     |  GPIO 0              |  Intégré sur la carte ESP32-S3
+Bouton TOUCH    |  GPIO 47             |  Bouton poussoir vers GND
+Bouton Vol +    |  GPIO 40             |  Bouton poussoir vers GND
+Bouton Vol -    |  GPIO 39             |  Bouton poussoir vers GND
+LED WS2812      |  GPIO 48             |  LED RGB adressable intégrée
+
+--------------------------------------------------------------------------------
+3. REGLES D'OR POUR L'ALIMENTATION ET LA STABILITE
+--------------------------------------------------------------------------------
+1. MASSE COMMUNE (GND) :
+   Tous les GND (ESP32, driver moteurs, batterie, ampli, micro, écran) DOIVENT
+   être reliés ensemble.
+
+2. ALIMENTATION DES MOTEURS :
+   Ne JAMAIS alimenter les moteurs directement depuis la broche 3.3V ou 5V de 
+   l'ESP32 ! Les moteurs doivent être alimentés par une batterie externe (7.4V 2S,
+   ou bloc 4xAA, etc.) pour éviter que l'ESP32 ne redémarre à chaque mouvement.
+
+3. MICROPHONE INMP441 :
+   Toujours alimenter en 3.3V uniquement (5V détruit le capteur). Relier la
+   broche L/R à GND pour sélectionner le canal gauche.
+================================================================================

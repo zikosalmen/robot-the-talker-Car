@@ -1,0 +1,33 @@
+name: Build Boards
+
+# Upstream compiles every board variant on each push to main (~176 jobs).
+# That burns GitHub Free's 2000 private-repo Actions minutes in one or two
+# pushes. This fork builds desktop-robot locally; CI is manual only.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build desktop-robot
+    runs-on: ubuntu-latest
+    container:
+      image: espressif/idf:v6.0.2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build desktop-robot
+        shell: bash
+        run: |
+          source $IDF_PATH/export.sh
+          python scripts/build.py desktop-robot --name desktop-robot
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: xiaozhi_desktop-robot_${{ github.sha }}
+          path: build/merged-binary.bin
+          if-no-files-found: error

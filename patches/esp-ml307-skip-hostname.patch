@@ -1,0 +1,30 @@
+# Spec: desktop_robot_documentation 05-software/software-spec-v0.md §4.4
+# Apply from firmware repo root AFTER managed_components/78__esp-ml307 exists:
+#   git apply patches/esp-ml307-skip-hostname.patch
+#
+diff --git a/managed_components/78__esp-ml307/src/esp/esp_ssl.cc b/managed_components/78__esp-ml307/src/esp/esp_ssl.cc
+--- a/managed_components/78__esp-ml307/src/esp/esp_ssl.cc
++++ b/managed_components/78__esp-ml307/src/esp/esp_ssl.cc
+@@ -32,6 +32,11 @@ bool EspSsl::Connect(const std::string& host, int port) {
+     }
+ 
+     esp_tls_cfg_t cfg = {};
+     cfg.crt_bundle_attach = esp_crt_bundle_attach;
++    // Official api.tenclass.net currently serves mqtt.tenclass.net's cert.
++    // Keep CA bundle checks; only skip hostname/SNI match so local bring-up can reach OTA/WSS.
++    cfg.skip_common_name = true;
++    ESP_LOGW(TAG, "TLS hostname check disabled (api.tenclass.net cert workaround)");
+ 
+     int ret = esp_tls_conn_new_sync(host.c_str(), host.length(), port, &cfg, tls_client_);
+     if (ret != 1) {
+diff --git a/managed_components/78__esp-ml307/src/esp/esp_mqtt.cc b/managed_components/78__esp-ml307/src/esp/esp_mqtt.cc
+--- a/managed_components/78__esp-ml307/src/esp/esp_mqtt.cc
++++ b/managed_components/78__esp-ml307/src/esp/esp_mqtt.cc
+@@ -26,6 +26,7 @@ bool EspMqtt::Connect(const std::string broker_address, int broker_port, const s
+     if (broker_port == 8883) {
+         mqtt_config.broker.address.transport = MQTT_TRANSPORT_OVER_SSL;
+         mqtt_config.broker.verification.crt_bundle_attach = esp_crt_bundle_attach;
++        mqtt_config.broker.verification.skip_cert_common_name_check = true;
+     } else {
+         mqtt_config.broker.address.transport = MQTT_TRANSPORT_OVER_TCP;
+     }
